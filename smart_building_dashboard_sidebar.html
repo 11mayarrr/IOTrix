@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smart Building Control Panel</title>
+  <style>
+    :root{
+      --bg1:#071017;
+      --bg2:#0b1520;
+      --card:#0f1724;
+      --muted: rgba(255,255,255,0.66);
+      --accent:#11c2c7;
+      --accent-2:#6b8cff;
+      --temp:#ff9f1c;   /* orange */
+      --hum:#4aa3ff;    /* blue */
+      --fire:#ff5a5f;   /* red */
+      --safe:#2ed573;   /* green */
+      --glass: rgba(255,255,255,0.03);
+      --radius:14px;
+      --shadow: 0 18px 40px rgba(2,8,20,0.6);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg,var(--bg1),var(--bg2));
+      color:#fff;padding:22px;
+      -webkit-font-smoothing:antialiased;
+    }
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:#061018;box-shadow:0 8px 30px rgba(17,194,199,0.08)
+    }
+    h1{margin:0;font-size:18px}
+    .sub{color:var(--muted);font-size:13px}
+    .controls{display:flex;gap:10px;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:10px;color:var(--muted);cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#061018;border:none;box-shadow:0 8px 30px rgba(17,194,199,0.08)}
+    main{margin-top:18px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+    .room-card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px; padding:18px; position:relative; overflow:hidden; border:1px solid rgba(255,255,255,0.04);
+      transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      cursor:pointer;
+    }
+    .room-card:hover{transform:translateY(-6px);box-shadow:var(--shadow);border-color:rgba(255,255,255,0.07)}
+    .room-name{font-size:16px;font-weight:700}
+    .room-muted{color:var(--muted);font-size:13px;margin-top:6px}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(0,0,0,0.18);font-size:13px}
+    .small-muted{font-size:12px;color:var(--muted)}
+    /* Sidebar */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.35);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease;z-index:40;}
+    .overlay.visible{opacity:1;visibility:visible}
+    .sidebar{position:fixed;right:0;top:0;height:100%;width:420px;max-width:93%;
+      background:linear-gradient(180deg,#0c1520, #071018);box-shadow:-24px 0 60px rgba(2,8,20,0.7);
+      border-left:1px solid rgba(255,255,255,0.04);padding:20px;transform:translateX(18%);transition:transform .22s ease;
+      z-index:50;display:flex;flex-direction:column;gap:12px;border-top-left-radius:14px;border-bottom-left-radius:14px;}
+    .sidebar.open{transform:translateX(0)}
+    .sb-header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .sb-title{font-size:18px;font-weight:800}
+    .sb-sub{color:var(--muted);font-size:13px}
+    .close-btn{background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer}
+    .section{background:var(--card);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    .metric-value{font-size:20px;font-weight:800}
+    .controls-row{display:flex;gap:8px;align-items:center}
+    .circle-btn{width:40px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-weight:700}
+    .pill{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);font-size:13px;cursor:pointer}
+    .status-pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;font-weight:700}
+    .status-safe{background:rgba(46,213,115,0.12);color:var(--safe);border:1px solid rgba(46,213,115,0.06)}
+    .status-fire{background:rgba(255,90,95,0.12);color:var(--fire);border:1px solid rgba(255,90,95,0.08)}
+    .status-vent{background:rgba(46,213,115,0.08);color:var(--safe);border:1px solid rgba(46,213,115,0.06)}
+    .danger{color:var(--fire);font-weight:800}
+    .hum-color{color:var(--hum)}
+    .temp-color{color:var(--temp)}
+    .footer-note{color:var(--muted);font-size:13px;margin-top:auto;text-align:center}
+    @media (max-width:560px){
+      .logo{width:48px;height:48px}
+      .room-name{font-size:15px}
+      .sidebar{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">SB</div>
+      <div>
+        <h1>Smart Building Control Panel</h1>
+        <div class="sub">Rooms overview — click a room to open details</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="demoToggle">Disable Demo</button>
+      <button class="btn primary" id="refreshNow">Refresh Now</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" id="roomsGrid" style="margin-top:18px">
+      <!-- room cards rendered here -->
+    </section>
+    <footer style="margin-top:18px;color:var(--muted);font-size:13px;text-align:center">Designed for local demo • Data simulated • Controls are mock</footer>
+  </main>
+
+  <!-- overlay + sidebar -->
+  <div id="overlay" class="overlay" aria-hidden="true"></div>
+  <aside id="sidebar" class="sidebar" role="dialog" aria-hidden="true" aria-label="Room details panel">
+    <div class="sb-header">
+      <div>
+        <div class="sb-title" id="sb-room-name">Room</div>
+        <div class="sb-sub" id="sb-room-id">ID: --</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="vent-indicator" class="status-pill status-vent" style="display:none">Ventilation: ON</div>
+        <button class="close-btn" id="sb-close" aria-label="Close sidebar">×</button>
+      </div>
+    </div>
+
+    <!-- Temperature -->
+    <div class="section" id="section-temp">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="small-muted">Temperature</div>
+          <div class="metric-value temp-color" id="sb-temp">-- °C</div>
+        </div>
+        <div class="controls-row">
+          <button class="circle-btn" id="temp-decrease" aria-label="Decrease temp">−</button>
+          <button class="circle-btn" id="temp-increase" aria-label="Increase temp">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Humidity -->
+    <div class="section" id="section-hum">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="small-muted">Humidity</div>
+          <div class="metric-value hum-color" id="sb-hum">-- %</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <button class="pill" id="reduce-hum" style="display:none;background:rgba(74,163,255,0.08);border-color:rgba(74,163,255,0.12)">Reduce Humidity</button>
+          <div class="small-muted" id="hum-note">Ideal: 30–60%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fire -->
+    <div class="section" id="section-fire">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div class="small-muted">Fire Alert</div>
+          <div id="sb-fire-status" class="danger" style="font-size:16px;font-weight:800">No fire</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <button class="pill" id="extinguish-btn" style="display:none;background:rgba(255,90,95,0.08);border-color:rgba(255,90,95,0.14)">Extinguish Fire 💧</button>
+          <div class="small-muted">If fire detected, extinguish immediately</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- People / Ventilation threshold -->
+    <div class="section" id="section-people">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="small-muted">People Count</div>
+          <div class="metric-value" id="sb-people">--</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="circle-btn" id="people-decrease">−</button>
+          <button class="circle-btn" id="people-increase">+</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+        <div class="small-muted">Ventilation Threshold: <strong id="threshold-value">6</strong> people</div>
+        <input id="threshold-range" type="range" min="2" max="12" step="1" value="6" />
+        <div class="small-muted">When people exceed threshold, ventilation turns ON automatically.</div>
+      </div>
+    </div>
+
+    <div class="footer-note">Demo data refreshes every 5 seconds • Values are simulated</div>
+  </aside>
+
+  <script>
+    // Rooms config
+    const rooms = [
+      {id:'office', name:'Office', base:{t:25,h:45}, people:3},
+      {id:'meeting', name:'Meeting Room', base:{t:23,h:52}, people:6},
+      {id:'lounge', name:'Lounge', base:{t:26,h:39}, people:2}
+    ];
+
+    // Application state per room
+    const state = {};
+    rooms.forEach(r => {
+      state[r.id] = {
+        fire: false,
+        vent: false,
+        people: r.people,
+        temp: r.base.t,
+        hum: r.base.h,
+        history: [],
+        threshold: 6 // default per-room threshold (user can change when sidebar open)
+      };
+    });
+
+    let demoMode = true;
+    const REFRESH_MS = 5000;
+    const humHighThreshold = 60; // show reduce hum button when above this
+
+    // cached DOM refs
+    const roomsGrid = document.getElementById('roomsGrid');
+    const overlay = document.getElementById('overlay');
+    const sidebar = document.getElementById('sidebar');
+    const sbRoomName = document.getElementById('sb-room-name');
+    const sbRoomId = document.getElementById('sb-room-id');
+    const sbTemp = document.getElementById('sb-temp');
+    const sbHum = document.getElementById('sb-hum');
+    const sbFireStatus = document.getElementById('sb-fire-status');
+    const sbPeople = document.getElementById('sb-people');
+    const ventIndicator = document.getElementById('vent-indicator');
+
+    const tempIncBtn = document.getElementById('temp-increase');
+    const tempDecBtn = document.getElementById('temp-decrease');
+    const reduceHumBtn = document.getElementById('reduce-hum');
+    const extinguishBtn = document.getElementById('extinguish-btn');
+    const peopleIncBtn = document.getElementById('people-increase');
+    const peopleDecBtn = document.getElementById('people-decrease');
+    const thresholdRange = document.getElementById('threshold-range');
+    const thresholdValueLabel = document.getElementById('threshold-value');
+
+    const demoToggle = document.getElementById('demoToggle');
+    const refreshNow = document.getElementById('refreshNow');
+    const sbClose = document.getElementById('sb-close');
+
+    let activeRoomId = null;
+    let updaterInterval = null;
+
+    // Render main page room cards (names only)
+    function renderRoomCards(){
+      roomsGrid.innerHTML = rooms.map(r => {
+        const s = state[r.id];
+        const ventBadge = s.vent ? `<div class="status-pill status-vent" style="font-size:12px;padding:6px 8px">Vent ON</div>` : '';
+        const fireBadge = s.fire ? `<div class="status-pill status-fire" style="font-size:12px;padding:6px 8px">FIRE</div>` : '';
+        return `
+          <div class="room-card" data-room="${r.id}" tabindex="0" role="button" aria-pressed="false">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="room-name">${r.name}</div>
+                <div class="room-muted">ID: ${r.id}</div>
+              </div>
+              <div style="text-align:right">
+                <div class="small-muted">People</div>
+                <div style="font-weight:800">${s.people}</div>
+                <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;align-items:center">
+                  ${ventBadge}
+                  ${fireBadge}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      // attach listeners
+      document.querySelectorAll('.room-card').forEach(card=>{
+        card.addEventListener('click', ()=> {
+          const rid = card.getAttribute('data-room');
+          openSidebar(rid);
+        });
+        card.addEventListener('keydown', (e)=>{
+          if(e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const rid = card.getAttribute('data-room');
+            openSidebar(rid);
+          }
+        });
+      });
+    }
+
+    // Open / close sidebar
+    function openSidebar(roomId){
+      activeRoomId = roomId;
+      const r = rooms.find(x=>x.id===roomId);
+      const s = state[roomId];
+      sbRoomName.textContent = r.name;
+      sbRoomId.textContent = `ID: ${r.id}`;
+      thresholdRange.value = s.threshold;
+      thresholdValueLabel.textContent = s.threshold;
+      updateSidebarUI(roomId);
+      overlay.classList.add('visible');
+      overlay.setAttribute('aria-hidden', 'false');
+      sidebar.classList.add('open');
+      sidebar.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeSidebar(){
+      activeRoomId = null;
+      overlay.classList.remove('visible');
+      overlay.setAttribute('aria-hidden', 'true');
+      sidebar.classList.remove('open');
+      sidebar.setAttribute('aria-hidden', 'true');
+    }
+
+    overlay.addEventListener('click', closeSidebar);
+    sbClose.addEventListener('click', closeSidebar);
+
+    // update sidebar UI for room
+    function updateSidebarUI(roomId){
+      const s = state[roomId];
+      sbTemp.textContent = `${s.temp.toFixed(1)} °C`;
+      sbHum.textContent = `${Math.round(s.hum)} %`;
+      sbPeople.textContent = `${s.people}`;
+      thresholdValueLabel.textContent = s.threshold;
+
+      // fire
+      if(s.fire){
+        sbFireStatus.textContent = '🔥 Fire Detected!';
+        sbFireStatus.classList.add('danger');
+        extinguishBtn.style.display = 'inline-block';
+      } else {
+        sbFireStatus.textContent = 'No fire';
+        sbFireStatus.classList.remove('danger');
+        extinguishBtn.style.display = 'none';
+      }
+
+      // humidity reduce button
+      if(s.hum > humHighThreshold){
+        reduceHumBtn.style.display = 'inline-block';
+      } else {
+        reduceHumBtn.style.display = 'none';
+      }
+
+      // ventilation indicator
+      if(s.vent){
+        ventIndicator.style.display = 'inline-flex';
+      } else {
+        ventIndicator.style.display = 'none';
+      }
+    }
+
+    // Basic demo reading generator (random fluctuation)
+    function sampleReading(base){
+      const t = base.t + (Math.random()-0.5)*1.6;
+      const h = base.h + (Math.random()-0.5)*5;
+      return {temp: Math.round(t*10)/10, hum: Math.max(0, Math.min(100, Math.round(h)))};
+    }
+
+    // Update all rooms (demo)
+    function updateAll(){
+      rooms.forEach(r=>{
+        const s = state[r.id];
+        if(demoMode){
+          const read = sampleReading(r.base);
+          s.temp = read.temp;
+          s.hum = read.hum;
+          const now = new Date();
+          s.history.push({t:s.temp,h:s.hum,ts:now});
+          if(s.history.length>50) s.history.shift();
+        }
+        // auto ventilation logic: ventilation toggles on when people > threshold
+        if(s.people > s.threshold){
+          s.vent = true;
+        } else {
+          s.vent = false;
+        }
+      });
+      // reflect on UI
+      renderRoomCards();
+      if(activeRoomId) updateSidebarUI(activeRoomId);
+    }
+
+    // Handlers for sidebar controls
+    tempIncBtn.addEventListener('click', ()=>{
+      if(!activeRoomId) return;
+      state[activeRoomId].temp = +(state[activeRoomId].temp + 0.5).toFixed(1);
+      updateSidebarUI(activeRoomId);
+      renderRoomCards();
+    });
+    tempDecBtn.addEventListener('click', ()=>{
+      if(!activeRoomId) return;
+      state[activeRoomId].temp = +(state[activeRoomId].temp - 0.5).toFixed(1);
+      updateSidebarUI(activeRoomId);
+      renderRoomCards();
+    });
+
+    reduceHumBtn.addEventListener('click', ()=>{
+      if(!activeRoomId) return;
+      // simulate humidity reduction
+      state[activeRoomId].hum = Math.max(20, Math.round(state[activeRoomId].hum - 8));
+      updateSidebarUI(activeRoomId);
+      renderRoomCards();
+    });
+
+    extinguishBtn.addEventListener('click', ()=>{
+      if(!activeRoomId) return;
+      state[activeRoomId].fire = false;
+      updateSidebarUI(activeRoomId);
+      renderRoomCards();
+    });
+
+    peopleIncBtn.addEventListener('click', ()=>{
+      if(!activeRoomId) return;
+      state[activeRoomId].people++;
+      // if now over threshold, ventilation turns on
+      if(state[activeRoomId].people > state[activeRoomId].threshold){
+        state[activeRoomId].vent = true;
+      }
+      updateSidebarUI(activeRoomId);
+      renderRoomCards();
+    });
+
+    peopleDecBtn.addEventListener('click', ()=>{
+      if(!activeRoomId) return;
+      state[activeRoomId].people = Math.max(0, state[activeRoomId].people - 1);
+      // if below or equal threshold, turn ventilation off
+      if(state[activeRoomId].people <= state[activeRoomId].threshold){
+        state[activeRoomId].vent = false;
+      }
+      updateSidebarUI(activeRoomId);
+      renderRoomCards();
+    });
+
+    // Threshold range control
+    thresholdRange.addEventListener('input', (e)=>{
+      if(!activeRoomId) return;
+      const v = parseInt(e.target.value,10);
+      state[activeRoomId].threshold = v;
+      thresholdValueLabel.textContent = v;
+      // check if currently people exceed new threshold
+      if(state[activeRoomId].people > v){
+        state[activeRoomId].vent = true;
+      } else {
+        state[activeRoomId].vent = false;
+      }
+      updateSidebarUI(activeRoomId);
+      renderRoomCards();
+    });
+
+    // Demo toggle & manual refresh
+    demoToggle.addEventListener('click', ()=>{
+      demoMode = !demoMode;
+      demoToggle.textContent = demoMode ? 'Disable Demo' : 'Enable Demo';
+    });
+    refreshNow.addEventListener('click', updateAll);
+
+    // small utility: randomly trigger fire events in demo mode to show alerts (rare)
+    function maybeTriggerRandomFire(){
+      if(!demoMode) return;
+      // low chance per cycle
+      rooms.forEach(r => {
+        if(Math.random() < 0.03){ // 3% chance per room per cycle
+          state[r.id].fire = true;
+          // optionally set vent off when fire occurs for clarity
+          state[r.id].vent = false;
+        }
+      });
+    }
+
+    // Start auto-updater
+    function startUpdater(){
+      if(updaterInterval) clearInterval(updaterInterval);
+      updaterInterval = setInterval(()=>{
+        updateAll();
+        maybeTriggerRandomFire();
+      }, REFRESH_MS);
+    }
+
+    // initial render
+    renderRoomCards();
+    updateAll();
+    startUpdater();
+
+    // keyboard escape to close
+    window.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && activeRoomId) closeSidebar();
+    });
+  </script>
+</body>
+</html>
